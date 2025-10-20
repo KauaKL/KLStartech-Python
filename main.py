@@ -3,92 +3,96 @@ import plotly.express as px
 import io
 import pandas as pd
 import numpy as np
+import time
 from sklearn.linear_model import LinearRegression
 from data import pegar_dados
 from fpdf import FPDF
+import matplotlib.pyplot as plt
 
-# A biblioteca streamlit é usada para criar a interface web
-# A função pegar_dados é importada do arquivo data.py para buscar os dados das cotações
-
+# Configuração inicial do Streamlit
 st.set_page_config(page_title="DASHBORD FINANCEIRO", layout='centered')
-
 st.title("DASHBORD FINANCEIRO")
 st.markdown("Visualize as cotações de moedas em tempo real e seus históricos.")
 
-# Escolha da moeda
+# Escolha da moeda e intervalo de dias
 moeda = st.selectbox("Selecione a moeda:", ["USD", "EUR", "BTC"])
-dias = st.slider("Seleccione quantos dias de histórico deseja ver:", min_value=5, max_value=30, value=7)
+dias = st.slider("Selecione quantos dias de histórico deseja ver:", min_value=5, max_value=30, value=7)
 
-# Buscar  dados
+# Buscar dados
 st.write("Buscando dados, aguarde...")
 df = pegar_dados(moeda, dias)
 st.success("Dados carregados com sucesso!")
-import time
-# Simular tempo de espera
+
+# Simular tempo de espera para melhor experiência visual
 time.sleep(3)
-placeholder = st.empty()
 st.dataframe(df.head())
 
-
-# Exibir estatísticas
+# Exibir estatísticas básicas
 media = df['bid'].mean()
 minimo = df['bid'].min()
 maximo = df['bid'].max()
 
-st.subheader(f" Estatísticas - {moeda}/BRL")
-st.write(f"**Média:** R$ {media:2f}")
-st.write(f"**Minimo:** R${minimo:2f}")
-st.write(f"**Mximo:**R${maximo:2f}")
+st.subheader(f"Estatísticas - {moeda}/BRL")
+st.write(f"**Média:** R$ {media:.2f}")
+st.write(f"**Mínimo:** R$ {minimo:.2f}")
+st.write(f"**Máximo:** R$ {maximo:.2f}")
 
-# Gráfico interativo
-# exibir grafico 
+# Gráfico interativo com Plotly
 fig = px.line(
     df,
     x='timestamp',
     y='bid',
-    title=f"cotação {moeda}/BRL - Últimos {dias} dias",
-    labels={'timestamp': 'Data', 'bid': 'valor (R$)'},
+    title=f"Cotação {moeda}/BRL - Últimos {dias} dias",
+    labels={'timestamp': 'Data', 'bid': 'Valor (R$)'},
     markers=True
 )
-st.subheader("📈 Previsão de Cotação (Regressão Linear)")
+st.plotly_chart(fig, use_container_width=True)
 
-# Preparar os dados
+# Previsão de Cotação (Regressão Linear)
+st.subheader("Previsão de Cotação (Regressão Linear)")
+
+# Preparar dados para regressão
 df = df.reset_index(drop=True)
 X = np.arange(len(df)).reshape(-1, 1)
 y = df['bid'].values
 
-# Treinar o modelo
 modelo = LinearRegression()
 modelo.fit(X, y)
 
-# Fazer previsão para os próximos 3 dias
+# Prever o próximo dia
+proximo_dia = np.array([[len(df)]])
+previsao = modelo.predict(proximo_dia)[0]
+
+# Exibir previsão
+st.write(f"Previsão para o próximo dia: **R$ {previsao:.2f}**")
+
+# Previsão para os próximos 3 dias
 dias_futuros = 3
 X_futuro = np.arange(len(df), len(df) + dias_futuros).reshape(-1, 1)
 y_pred = modelo.predict(X_futuro)
 
-# Exibir previsões
 st.write("Previsão para os próximos dias:")
 for i in range(dias_futuros):
     st.write(f"Dia {i+1}: R$ {y_pred[i]:.2f}")
 
-# Gráfico com a previsão
-fig_pred = px.line(df, x='timestamp', y='bid', title=f"Previsão de Cotação {moeda}/BRL")
-fig_pred.add_scatter(x=[df['timestamp'].iloc[-1] + pd.Timedelta(days=i+1) for i in range(dias_futuros)],
-                     y=y_pred, mode='lines+markers', name='Previsão')
-st.plotly_chart(fig_pred, use_container_width=True)
-
-
-st.plotly_chart(fig, use_container_width=True)
+# Gráfico com Matplotlib da previsão
+fig2, ax2 = plt.subplots()
+ax2.plot(X.flatten(), df['bid'], label='Histórico', marker='o')
+ax2.scatter(len(df), previsao, color='red', label='Previsão', marker='x', s=100)
+ax2.set_title(f"Previsão da Cotação {moeda}/BRL")
+ax2.set_xlabel("Dias")
+ax2.set_ylabel("Valor (R$)")
+ax2.legend()
+st.pyplot(fig2)
 
 # Função para gerar Excel
 def gerar_excel(df):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, sheet_name='Cotações', index=False)
-    processed_data = output.getvalue()
-    return processed_data
+    return output.getvalue()
 
-# Botão para baixar Excel
+# Botão para download do Excel
 excel_data = gerar_excel(df)
 st.download_button( 
     label="Baixar relatório Excel",
@@ -102,25 +106,24 @@ def gerar_pdf(df, moeda):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 10, f"cotações {moeda}/BRL", ln=True, align='C')
+    pdf.cell(0, 10, f"Cotações {moeda}/BRL", ln=True, align='C')
     pdf.ln(10)
     pdf.set_font("Arial", '', 12)
     
-    # Adiciona dados do PDF
     for i in range(len(df)):
         data = df.iloc[i]['timestamp'].strftime('%Y-%m-%d')
-        valor= df.iloc[i]['bid']
+        valor = df.iloc[i]['bid']
         pdf.cell(0, 10, f"{data}: R$ {valor:.2f}", ln=True)
         
-    pdf_output = pdf.output(dest='S').encode('latin-1')
-    return pdf_output
+    return pdf.output(dest='S').encode('latin-1')
 
-# Botão para baixar PDF
-pdf_data = gerar_pdf(df,moeda)
+# Botão para download do PDF
+pdf_data = gerar_pdf(df, moeda)
 st.download_button(
     label="Baixar relatório PDF",
     data=pdf_data,
     file_name=f"{moeda}_cotacoes.pdf",
     mime="application/pdf"
 )
-st.success(" Dashbord carregado com sucesso!")
+
+st.success("Dashboard carregado com sucesso!")
