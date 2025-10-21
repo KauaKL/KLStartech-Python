@@ -1,0 +1,11 @@
+flet
+pandas
+plotly
+fpdf
+prophet
+twilio
+email-validator
+python-dotenv
+# python-dotenv is used to load environment variables from a .env file
+# Make sure to create a .env file with the necessary variables as shown in env.py
+# Twilio is used for sending WhatsApp messages
