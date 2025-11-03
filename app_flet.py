@@ -1,67 +1,39 @@
-# app_flet.py
-"""
-DashFin — App Flet com:
-- Gráfico interativo (Plotly) + previsão (Prophet)
-- Geração de relatórios (Excel/PDF)
-- Automação periódica
-- Alertas inteligentes por E-MAIL (SMTP) e WhatsApp (Twilio)
-- Cooldown para evitar alertas repetidos
-- Uso de variáveis de ambiente via python-dotenv
-
-Dependências:
-pip install flet plotly pandas requests prophet fpdf xlsxwriter twilio python-dotenv
-
-Variáveis de ambiente (preferível usar .env):
-# SMTP (ex: Gmail)
-ALERT_EMAIL_HOST=smtp.gmail.com
-ALERT_EMAIL_PORT=587
-ALERT_EMAIL_USER=seu_email@gmail.com
-ALERT_EMAIL_PASS=senha_ou_app_password
-ALERT_EMAIL_TO=destino@exemplo.com  # opcional se inserir no app
-"""
-
 import os
 import threading
 import time
 from datetime import datetime, timedelta
-import smtplib
-from email.mime.text import MIMEText
 from typing import Optional
-
 import pandas as pd
 import plotly.express as px
 from fpdf import FPDF
 from prophet import Prophet
-
 import flet as ft
 from flet.plotly_chart import PlotlyChart
-
 from twilio.rest import Client
 from dotenv import load_dotenv
-
 from data import pegar_dados
 
-# Carrega .env se existir
+# Carrega variáveis de ambiente
 load_dotenv()
 
-# Pasta de relatórios
+# ----- Configurações -----
 REPORTS_FOLDER = "reports"
 os.makedirs(REPORTS_FOLDER, exist_ok=True)
 
-# ----- Configurações de credenciais (lê do ambiente) -----
+# SMTP
 SMTP_HOST = os.getenv("ALERT_EMAIL_HOST")
 SMTP_PORT = int(os.getenv("ALERT_EMAIL_PORT") or 587)
 SMTP_USER = os.getenv("ALERT_EMAIL_USER")
 SMTP_PASS = os.getenv("ALERT_EMAIL_PASS")
 DEFAULT_EMAIL_TO = os.getenv("ALERT_EMAIL_TO")
 
+# Twilio
 TWILIO_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM")
 DEFAULT_WHATSAPP_TO = os.getenv("ALERT_WHATSAPP_TO")
 
-# ----- Estado para evitar alertas repetidos -----
-# Mapeia chave (moeda, valor_alvo) -> timestamp do último alerta enviado
+# Estado de alertas para cooldown
 _last_alert_times = {}
 
 def _alert_key(moeda: str, valor_alvo: float) -> str:
@@ -70,17 +42,16 @@ def _alert_key(moeda: str, valor_alvo: float) -> str:
 def can_send_alert(moeda: str, valor_alvo: float, cooldown_seconds: int) -> bool:
     key = _alert_key(moeda, valor_alvo)
     last = _last_alert_times.get(key)
-    if not last:
-        return True
-    return (datetime.now() - last).total_seconds() >= cooldown_seconds
+    return True if not last else (datetime.now() - last).total_seconds() >= cooldown_seconds
 
 def mark_alert_sent(moeda: str, valor_alvo: float):
     key = _alert_key(moeda, valor_alvo)
     _last_alert_times[key] = datetime.now()
 
-# ----- Funções de envio de alerta ----- 
+# ----- Funções de envio de alertas -----
 def send_email_alert(subject: str, body: str, to_address: Optional[str] = None) -> bool:
-    """Envia e-mail via SMTP. Retorna True se sucesso."""
+    import smtplib
+    from email.mime.text import MIMEText
     if not SMTP_HOST or not SMTP_USER or not SMTP_PASS:
         print("SMTP não configurado. Pule envio de e-mail.")
         return False
@@ -106,7 +77,6 @@ def send_email_alert(subject: str, body: str, to_address: Optional[str] = None) 
         return False
 
 def send_whatsapp_alert(body: str, to_number: Optional[str] = None) -> bool:
-    """Envia WhatsApp via Twilio. Retorna True se sucesso."""
     if not TWILIO_SID or not TWILIO_TOKEN or not TWILIO_WHATSAPP_FROM:
         print("Twilio não configurado. Pule envio de WhatsApp.")
         return False
@@ -116,23 +86,17 @@ def send_whatsapp_alert(body: str, to_number: Optional[str] = None) -> bool:
         return False
     try:
         client = Client(TWILIO_SID, TWILIO_TOKEN)
-        message = client.messages.create(
-            body=body,
-            from_=TWILIO_WHATSAPP_FROM,
-            to=to
-        )
+        message = client.messages.create(body=body, from_=TWILIO_WHATSAPP_FROM, to=to)
         print(f"WhatsApp enviado SID: {message.sid}")
         return True
     except Exception as e:
         print("Erro ao enviar WhatsApp:", e)
         return False
 
-# ----- Funções de previsão / relatório -----
+# ----- Previsão com Prophet -----
 def gerar_previsao(df: pd.DataFrame, dias_futuros: int = 7) -> pd.DataFrame:
-    """Gera previsão com Prophet e retorna DataFrame com cols (timestamp, bid, min, max)."""
     df_prophet = df[['timestamp', 'bid']].rename(columns={'timestamp': 'ds', 'bid': 'y'})
     if len(df_prophet) < 2:
-        # Poucos dados: repetir último
         last = df_prophet['ds'].iloc[-1] if len(df_prophet) else datetime.now()
         return pd.DataFrame({
             'timestamp': [last + pd.Timedelta(days=i+1) for i in range(dias_futuros)],
@@ -152,6 +116,7 @@ def gerar_previsao(df: pd.DataFrame, dias_futuros: int = 7) -> pd.DataFrame:
     })
     return df_pred.tail(dias_futuros)
 
+# ----- Exportação -----
 def gerar_excel_arquivo(df: pd.DataFrame, moeda: str) -> str:
     file_path = os.path.join(REPORTS_FOLDER, f"{moeda}_cotacoes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx")
     df.to_excel(file_path, index=False)
@@ -178,38 +143,22 @@ def gerar_pdf_arquivo(df: pd.DataFrame, moeda: str) -> str:
     pdf.output(file_path)
     return file_path
 
-# ----- Função que verifica condição e envia alertas ----- 
+# ----- Verificação de alertas -----
 def verificar_e_alertar(page: ft.Page, moeda: str, df: pd.DataFrame, valor_alvo: float,
                         enviar_email: bool, enviar_whatsapp: bool,
                         email_to: Optional[str], whatsapp_to: Optional[str],
                         cooldown_seconds: int):
-    """
-    Se o último valor >= valor_alvo e tiver cooldown ok, envia alertas configurados.
-    Também calcula previsão para tentar estimar em quantos dias o alvo pode ser atingido.
-    """
     try:
         atual = float(df['bid'].iloc[-1])
-    except Exception as e:
-        print("Erro ao obter valor atual:", e)
+    except:
         return
 
-    # só alerta se valor atual >= alvo
-    if atual < valor_alvo:
-        return
+    if atual < valor_alvo: return
+    if not can_send_alert(moeda, valor_alvo, cooldown_seconds): return
 
-    if not can_send_alert(moeda, valor_alvo, cooldown_seconds):
-        print("Cooldown ativo — não envia alerta duplicado.")
-        return
-
-    # calcula previsão para informar em quantos dias o alvo seria alcançado (se aplicável)
     df_pred = gerar_previsao(df, dias_futuros=14)
-    dias_para_alvo = None
-    for i, v in enumerate(df_pred['bid'].values):
-        if v >= valor_alvo:
-            dias_para_alvo = i + 1
-            break
+    dias_para_alvo = next((i + 1 for i, v in enumerate(df_pred['bid'].values) if v >= valor_alvo), None)
 
-    # Mensagem
     timestamp = df['timestamp'].iloc[-1].strftime("%Y-%m-%d %H:%M")
     previsao_text = f"\nPrevisão: {f'atingirá em ~{dias_para_alvo} dia(s)' if dias_para_alvo else 'não prevista nos próximos 14 dias'}"
     subject = f"[Alerta] {moeda}/BRL ultrapassou R$ {valor_alvo:.2f}"
@@ -220,48 +169,33 @@ def verificar_e_alertar(page: ft.Page, moeda: str, df: pd.DataFrame, valor_alvo:
             f"{previsao_text}\n\n"
             "Mensagem enviada pelo DashFin.")
 
-    # Enviar em threads para não travar a UI
     def _send_tasks():
         results = []
-        if enviar_email:
-            ok_mail = send_email_alert(subject, body, to_address=email_to)
-            results.append(("email", ok_mail))
-        if enviar_whatsapp:
-            ok_wa = send_whatsapp_alert(body, to_number=whatsapp_to)
-            results.append(("whatsapp", ok_wa))
-        # marca como enviado se algum canal retornou sucesso
-        if any(ok for (_, ok) in results):
-            mark_alert_sent(moeda, valor_alvo)
+        if enviar_email: results.append(("email", send_email_alert(subject, body, email_to)))
+        if enviar_whatsapp: results.append(("whatsapp", send_whatsapp_alert(body, whatsapp_to)))
+        if any(ok for (_, ok) in results): mark_alert_sent(moeda, valor_alvo)
 
     threading.Thread(target=_send_tasks, daemon=True).start()
-
-    # Notificação imediata na UI
     page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ Alerta: {moeda} >= R$ {valor_alvo:.2f} — verificando envios..."))
     page.snack_bar.open = True
     page.update()
 
-# ----- Automator (mesma lógica) -----
+# ----- Automação -----
 class Automator:
     def __init__(self):
         self._thread = None
         self._stop_event = threading.Event()
 
     def start(self, moeda, dias, intervalo, on_update):
-        if self._thread and self._thread.is_alive():
-            return False
+        if self._thread and self._thread.is_alive(): return False
         self._stop_event.clear()
-
         def _loop():
             while not self._stop_event.is_set():
-                try:
-                    on_update(moeda, dias)
-                except Exception as e:
-                    print("Erro no on_update:", e)
+                try: on_update(moeda, dias)
+                except Exception as e: print("Erro no on_update:", e)
                 for _ in range(max(1, intervalo)):
-                    if self._stop_event.is_set():
-                        break
+                    if self._stop_event.is_set(): break
                     time.sleep(1)
-
         self._thread = threading.Thread(target=_loop, daemon=True)
         self._thread.start()
         return True
@@ -273,23 +207,21 @@ class Automator:
             return True
         return False
 
-# ----- UI principal (Flet) -----
+# ----- UI principal -----
 def main(page: ft.Page):
     page.title = "DashFin — Mobile/Desktop"
     page.scroll = "always"
     page.padding = 12
 
-    # Controles principais
-    moeda_dropdown = ft.Dropdown(options=[ft.dropdown.Option("USD"), ft.dropdown.Option("EUR"), ft.dropdown.Option("BTC")], value="USD")
+    # ----- Controles -----
+    moeda_dropdown = ft.Dropdown(options=[ft.dropdown.Option(m) for m in ["USD","EUR","BTC"]], value="USD")
     dias_slider = ft.Slider(min=5, max=30, value=7, divisions=25, label="{value} dias")
-
     intervalo_input = ft.TextField(label="Intervalo automação (segundos)", value="3600", width=200)
     btn_atualizar = ft.ElevatedButton("🔄 Atualizar", width=150)
     btn_excel = ft.ElevatedButton("📊 Exportar Excel", width=150)
     btn_pdf = ft.ElevatedButton("📄 Exportar PDF", width=150)
     btn_auto = ft.ElevatedButton("▶ Iniciar automação", width=200)
 
-    # Alertas UI
     alvo_input = ft.TextField(label="Valor alvo (R$)", value="6.00", width=180)
     cooldown_input = ft.TextField(label="Cooldown (segundos)", value="3600", width=180)
 
@@ -304,26 +236,19 @@ def main(page: ft.Page):
     plot_chart = PlotlyChart()
     automator = Automator()
 
-    # Função que atualiza UI, plota gráfico, salva df no client_storage e verifica alertas
+    # ----- Função de atualização -----
     def atualizar_ui(moeda: str, dias: int):
         try:
             lbl_status.value = "Atualizando dados..."
             page.update()
-
             df = pegar_dados(moeda, dias)
-            # garantir tipos
             df['timestamp'] = pd.to_datetime(df['timestamp'])
             df['bid'] = df['bid'].astype(float)
-
-            # previsão (5 dias)
             df_pred = gerar_previsao(df, dias_futuros=5)
-
-            # criar gráfico
-            fig = px.line(df, x="timestamp", y="bid", title=f"{moeda}/BRL — Últimos {dias} dias", labels={"timestamp": "Data", "bid": "Valor (R$)"}, markers=True)
+            fig = px.line(df, x="timestamp", y="bid", title=f"{moeda}/BRL — Últimos {dias} dias", labels={"timestamp":"Data","bid":"Valor (R$)"}, markers=True)
             fig.add_scatter(x=df_pred["timestamp"], y=df_pred["bid"], mode="lines+markers", name="Previsão")
             plot_chart.figure = fig
 
-            # lista de previsão
             previsao_list.controls.clear()
             previsao_list.controls.append(ft.Text("📈 Previsão (5 dias):", weight=ft.FontWeight.BOLD))
             for i in range(len(df_pred)):
@@ -332,7 +257,7 @@ def main(page: ft.Page):
             lbl_status.value = f"✅ Atualizado: {moeda} (último: R$ {df['bid'].iloc[-1]:.4f})"
             page.client_storage.set("last_df", df.to_json(date_format="iso", orient="split"))
 
-            # verificar alertas configurados
+            # alertas
             try:
                 valor_alvo = float(alvo_input.value)
                 cooldown = int(cooldown_input.value)
@@ -340,18 +265,14 @@ def main(page: ft.Page):
                 enviar_whatsapp = checkbox_whatsapp.value
                 email_to = email_to_input.value.strip() or None
                 whatsapp_to = whatsapp_to_input.value.strip() or None
-
-                # chama função de verificação/alerta (assíncrona de envio)
                 verificar_e_alertar(page, moeda, df, valor_alvo, enviar_email, enviar_whatsapp, email_to, whatsapp_to, cooldown)
-            except Exception as e:
-                print("Erro ao processar alertas:", e)
-
+            except Exception as e: print("Erro ao processar alertas:", e)
             page.update()
         except Exception as e:
             lbl_status.value = f"Erro na atualização: {e}"
             page.update()
 
-    # handlers de export / automação
+    # ----- Handlers -----
     def gerar_excel(e):
         df_json = page.client_storage.get("last_df")
         if not df_json:
@@ -376,10 +297,8 @@ def main(page: ft.Page):
 
     def automacao(e):
         if btn_auto.text.startswith("▶"):
-            try:
-                intervalo = int(intervalo_input.value)
-            except:
-                intervalo = 3600
+            try: intervalo = int(intervalo_input.value)
+            except: intervalo = 3600
             automator.start(moeda_dropdown.value, int(dias_slider.value), intervalo, atualizar_ui)
             btn_auto.text = "■ Parar automação"
             lbl_status.value = "🔁 Automação iniciada"
@@ -389,13 +308,13 @@ def main(page: ft.Page):
             lbl_status.value = "⏹ Automação parada"
         page.update()
 
-    # ligações de botões
+    # ----- Botões -----
     btn_atualizar.on_click = lambda e: atualizar_ui(moeda_dropdown.value, int(dias_slider.value))
     btn_excel.on_click = gerar_excel
     btn_pdf.on_click = gerar_pdf
     btn_auto.on_click = automacao
 
-    # layout
+    # ----- Layout -----
     controles = ft.Column([
         ft.Text("Controles", weight=ft.FontWeight.BOLD),
         ft.Row([ft.Text("Moeda:"), moeda_dropdown], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
@@ -414,9 +333,9 @@ def main(page: ft.Page):
     ], spacing=8, width=360)
 
     painel_direito = ft.Column([plot_chart, previsao_list], expand=True)
-
     page.add(ft.Row([controles, painel_direito], expand=True))
-    # Carregar dados iniciais
+
+    # dados iniciais
     atualizar_ui(moeda_dropdown.value, int(dias_slider.value))
 
 if __name__ == "__main__":
