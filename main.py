@@ -1,14 +1,11 @@
-# main.py - DashFin completo com alertas
 import streamlit as st
 import pandas as pd
 import numpy as np
 import io
-import time
 import matplotlib.pyplot as plt
 import plotly.express as px
-from sklearn.linear_model import LinearRegression
+from prophet import Prophet
 from fpdf import FPDF
-from data import pegar_dados
 from datetime import datetime
 import threading
 import smtplib
@@ -16,8 +13,13 @@ from email.mime.text import MIMEText
 from twilio.rest import Client
 from dotenv import load_dotenv
 import os
+import tempfile
+from streamlit_autorefresh import st_autorefresh
+import requests
 
-# ----- Carregar variáveis de ambiente -----
+# ==========================
+# 🔧 CONFIGURAÇÕES INICIAIS
+# ==========================
 load_dotenv()
 
 SMTP_HOST = os.getenv("ALERT_EMAIL_HOST")
@@ -28,30 +30,34 @@ DEFAULT_EMAIL_TO = os.getenv("ALERT_EMAIL_TO")
 
 TWILIO_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
-TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM")
+TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM") or "whatsapp:+14155238886"
 DEFAULT_WHATSAPP_TO = os.getenv("ALERT_WHATSAPP_TO")
 
-# Estado para cooldown de alertas
 _last_alert_times = {}
+alert_log = []
 
-def _alert_key(moeda: str, valor_alvo: float) -> str:
-    return f"{moeda.upper()}__{valor_alvo}"
+# ==========================
+# ⚠️ FUNÇÕES DE ALERTA
+# ==========================
+def _alert_key(moeda, valor):
+    return f"{moeda.upper()}__{valor}"
 
-def can_send_alert(moeda: str, valor_alvo: float, cooldown_seconds: int) -> bool:
+def can_send_alert(moeda, valor_alvo, cooldown):
     key = _alert_key(moeda, valor_alvo)
     last = _last_alert_times.get(key)
     if not last:
         return True
-    return (datetime.now() - last).total_seconds() >= cooldown_seconds
+    return (datetime.now() - last).total_seconds() >= cooldown
 
-def mark_alert_sent(moeda: str, valor_alvo: float):
-    key = _alert_key(moeda, valor_alvo)
+def mark_alert_sent(moeda, valor, canais):
+    key = _alert_key(moeda, valor)
     _last_alert_times[key] = datetime.now()
+    alert_log.append((datetime.now().strftime("%Y-%m-%d %H:%M:%S"), moeda, valor, canais))
 
-# ----- Envio de alertas -----
-def send_email_alert(subject: str, body: str, to_address=None):
+def send_email_alert(subject, body, to_address=None):
     to = to_address or DEFAULT_EMAIL_TO
     if not (SMTP_HOST and SMTP_USER and SMTP_PASS and to):
+        print("⚠️ Configuração de e-mail ausente.")
         return False
     try:
         msg = MIMEText(body, "plain", "utf-8")
@@ -63,128 +69,254 @@ def send_email_alert(subject: str, body: str, to_address=None):
         server.login(SMTP_USER, SMTP_PASS)
         server.sendmail(SMTP_USER, [to], msg.as_string())
         server.quit()
+        print(f"📧 E-mail enviado para {to}")
         return True
     except Exception as e:
-        print("Erro email:", e)
+        print("Erro no envio de e-mail:", e)
         return False
 
-def send_whatsapp_alert(body: str, to_number=None):
+def send_whatsapp_alert(body, to_number=None):
     to = to_number or DEFAULT_WHATSAPP_TO
     if not (TWILIO_SID and TWILIO_TOKEN and TWILIO_WHATSAPP_FROM and to):
+        print("⚠️ Configuração do Twilio ausente.")
         return False
     try:
         client = Client(TWILIO_SID, TWILIO_TOKEN)
-        client.messages.create(body=body, from_=TWILIO_WHATSAPP_FROM, to=to)
+        msg = client.messages.create(
+            from_=TWILIO_WHATSAPP_FROM,
+            body=body,
+            to=to
+        )
+        print(f"✅ WhatsApp enviado: SID={msg.sid}")
         return True
     except Exception as e:
-        print("Erro WhatsApp:", e)
+        print("Erro no envio do WhatsApp:", e)
         return False
 
-# ----- Config Streamlit -----
-st.set_page_config(page_title="DashFin — Financeiro", layout='centered')
-st.title("DashFin — Dashboard Financeiro")
-st.markdown("Visualize cotações, previsões e receba alertas automáticos!")
+# ==========================
+# 🌍 OBTENDO DADOS DAS MOEDAS
+# ==========================
+def pegar_dados_frankfurter(moeda, dias):
+    end = datetime.now()
+    start = end - pd.Timedelta(days=dias)
+    url = f"https://api.frankfurter.app/{start.strftime('%Y-%m-%d')}..{end.strftime('%Y-%m-%d')}?to=BRL&from={moeda}"
+    try:
+        res = requests.get(url, timeout=10)
+        res.raise_for_status()
+        data = res.json()
+        df = pd.DataFrame(list(data["rates"].items()), columns=["timestamp", "bid"])
+        df["bid"] = df["bid"].apply(lambda x: x["BRL"])
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        df.sort_values("timestamp", inplace=True)
+        return df
+    except Exception as e:
+        st.warning(f"⚠️ Erro ao buscar Frankfurter {moeda}: {e}")
+        return pd.DataFrame(columns=["timestamp", "bid"])
 
-# Entrada do usuário
-moeda = st.selectbox("Moeda", ["USD", "EUR", "BTC"])
-dias = st.slider("Dias de histórico", 5, 30, 7)
-valor_alvo = st.number_input("Valor alvo para alerta (R$)", min_value=0.0, value=6.0)
-cooldown = st.number_input("Cooldown alerta (segundos)", min_value=0, value=3600)
-enviar_email = st.checkbox("Enviar alerta por E-mail", value=bool(SMTP_HOST and SMTP_USER and SMTP_PASS))
-email_to = st.text_input("E-mail destino (opcional)", value=DEFAULT_EMAIL_TO)
-enviar_whatsapp = st.checkbox("Enviar alerta por WhatsApp", value=bool(TWILIO_SID and TWILIO_TOKEN and TWILIO_WHATSAPP_FROM))
-whatsapp_to = st.text_input("WhatsApp destino (opcional)", value=DEFAULT_WHATSAPP_TO)
+def pegar_dados_btc(dias):
+    try:
+        url = "https://api.coindesk.com/v1/bpi/historical/close.json?currency=BRL"
+        res = requests.get(url, timeout=10)
+        res.raise_for_status()
+        data = res.json()["bpi"]
+        df = pd.DataFrame(list(data.items()), columns=["timestamp", "bid"])
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        df.sort_values("timestamp", inplace=True)
+        return df.tail(dias)
+    except Exception as e:
+        st.warning(f"⚠️ Erro ao buscar BTC: {e}")
+        return pd.DataFrame(columns=["timestamp", "bid"])
 
-# Buscar dados
-st.write("Buscando dados...")
-df = pegar_dados(moeda, dias)
-st.success("Dados carregados!")
-
-# Estatísticas
-st.subheader(f"Estatísticas - {moeda}/BRL")
-st.write(f"Média: R$ {df['bid'].mean():.2f}")
-st.write(f"Mínimo: R$ {df['bid'].min():.2f}")
-st.write(f"Máximo: R$ {df['bid'].max():.2f}")
-
-# Gráfico Plotly
-fig = px.line(df, x='timestamp', y='bid', title=f"{moeda}/BRL - Últimos {dias} dias", markers=True)
-st.plotly_chart(fig, use_container_width=True)
-
-# ----- Previsão Linear -----
-st.subheader("Previsão de Cotação (3 dias)")
-df_reset = df.reset_index(drop=True)
-X = np.arange(len(df_reset)).reshape(-1,1)
-y = df_reset['bid'].values
-modelo = LinearRegression()
-modelo.fit(X,y)
-X_futuro = np.arange(len(df_reset), len(df_reset)+3).reshape(-1,1)
-y_pred = modelo.predict(X_futuro)
-df_pred = pd.DataFrame({
-    'timestamp':[df_reset['timestamp'].iloc[-1]+pd.Timedelta(days=i+1) for i in range(3)],
-    'bid':y_pred
-})
-for i in range(3):
-    st.write(f"{df_pred.iloc[i]['timestamp'].strftime('%Y-%m-%d')}: R$ {df_pred.iloc[i]['bid']:.2f}")
-
-# Gráfico Matplotlib
-fig2, ax2 = plt.subplots()
-ax2.plot(df_reset['bid'].values, label='Histórico', marker='o')
-ax2.scatter(range(len(df_reset), len(df_reset)+3), y_pred, color='red', label='Previsão', marker='x')
-ax2.set_title(f"{moeda}/BRL - Previsão")
-ax2.set_xlabel("Dias")
-ax2.set_ylabel("Valor (R$)")
-ax2.legend()
-st.pyplot(fig2)
-
-# ----- Função alertas -----
-def verificar_alerta():
-    atual = df_reset['bid'].iloc[-1]
-    if atual >= valor_alvo and can_send_alert(moeda, valor_alvo, cooldown):
-        texto = f"Alerta {moeda}/BRL: valor atual R$ {atual:.2f} >= {valor_alvo:.2f}"
-        def enviar():
-            if enviar_email:
-                send_email_alert(f"Alerta {moeda}", texto, email_to or None)
-            if enviar_whatsapp:
-                send_whatsapp_alert(texto, whatsapp_to or None)
-            mark_alert_sent(moeda, valor_alvo)
-        threading.Thread(target=enviar, daemon=True).start()
-        st.success(texto)
+@st.cache_data(ttl=300)
+def pegar_dados_cache(moeda, dias):
+    moeda = moeda.upper()
+    if moeda in ["USD", "EUR"]:
+        return pegar_dados_frankfurter(moeda, dias)
+    elif moeda == "BTC":
+        return pegar_dados_btc(dias)
     else:
-        st.info(f"Último valor R$ {atual:.2f} — sem alerta")
+        return pd.DataFrame(columns=["timestamp", "bid"])
 
-verificar_alerta()
+# ==========================
+# 📈 PREVISÃO E EXPORTAÇÃO
+# ==========================
+@st.cache_data(ttl=300)
+def gerar_previsao_prophet(df, dias_previsao):
+    if df.empty:
+        return pd.DataFrame(columns=["timestamp", "bid"])
+    df_prophet = df.rename(columns={"timestamp": "ds", "bid": "y"})
+    modelo = Prophet(daily_seasonality=True)
+    modelo.fit(df_prophet)
+    futuro = modelo.make_future_dataframe(periods=dias_previsao)
+    forecast = modelo.predict(futuro)
+    df_pred = forecast[["ds", "yhat"]].tail(dias_previsao).rename(columns={"ds": "timestamp", "yhat": "bid"})
+    return df_pred
 
-# ----- Download Excel -----
-def gerar_excel(df, df_pred):
-    df_total = pd.concat([df, df_pred], ignore_index=True)
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df_total.to_excel(writer, index=False, sheet_name='Cotações')
-    return output.getvalue()
-
-st.download_button("Baixar Excel", gerar_excel(df, df_pred), file_name=f"{moeda}_cotacoes.xlsx",
-                   mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-
-# ----- Download PDF -----
-def gerar_pdf(df, df_pred, moeda):
+@st.cache_data
+def gerar_pdf_cache(df, df_pred, moeda):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial",'B',16)
-    pdf.cell(0,10,f"Cotações {moeda}/BRL", ln=True, align='C')
-    pdf.ln(8)
-    pdf.set_font("Arial",'',12)
-    pdf.cell(0,8,"Histórico:", ln=True)
-    for i in range(len(df)):
-        pdf.cell(0,7,f"{df.iloc[i]['timestamp'].strftime('%Y-%m-%d')}: R$ {df.iloc[i]['bid']:.2f}", ln=True)
-    pdf.ln(6)
-    pdf.set_font("Arial",'B',12)
-    pdf.cell(0,8,"Previsão:", ln=True)
-    pdf.set_font("Arial",'',12)
-    for i in range(len(df_pred)):
-        pdf.cell(0,7,f"{df_pred.iloc[i]['timestamp'].strftime('%Y-%m-%d')}: R$ {df_pred.iloc[i]['bid']:.2f}", ln=True)
-    return pdf.output(dest='S').encode('latin-1')
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, f"Cotações {moeda}/BRL", ln=True, align="C")
+    pdf.ln(5)
+    if not df.empty:
+        fig, ax = plt.subplots(figsize=(6, 3))
+        ax.plot(df["timestamp"], df["bid"], label="Histórico")
+        if not df_pred.empty:
+            ax.plot(df_pred["timestamp"], df_pred["bid"], label="Previsão", linestyle="--", color="red")
+        ax.legend()
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmpfile:
+            fig.savefig(tmpfile.name)
+            pdf.image(tmpfile.name, x=10, w=190)
+        plt.close(fig)
+    return pdf.output(dest="S").encode("latin-1")
 
-st.download_button("Baixar PDF", gerar_pdf(df, df_pred, moeda),
-                   file_name=f"{moeda}_cotacoes.pdf", mime="application/pdf")
+@st.cache_data
+def gerar_excel_cache(df, df_pred):
+    df_pred_renamed = df_pred.rename(columns={"bid": "Valor"})
+    df_total = pd.concat([df, df_pred_renamed], ignore_index=True)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df_total.to_excel(writer, index=False, sheet_name="Cotações")
+    return output.getvalue()
 
-st.success("Dashboard carregado com sucesso!")
+# ==========================
+# 🧠 DASHBOARD STREAMLIT
+# ==========================
+st.set_page_config(page_title="DashFin Supremo", layout="wide")
+st.title("💹 DashFin Supremo — Dashboard Financeiro Avançado")
+
+st.markdown("### 🔧 Status dos serviços:")
+st.write(f"📧 E-mail: {'✅ Ativo' if SMTP_USER else '❌ Inativo'}")
+st.write(f"💬 WhatsApp: {'✅ Ativo' if TWILIO_SID else '❌ Inativo'}")
+
+moeda = st.selectbox("Moeda", ["USD", "EUR", "BTC"])
+dias = st.slider("Dias de histórico", 5, 90, 30)
+dias_previsao = st.slider("Dias de previsão", 1, 14, 7)
+valor_alvo = st.number_input("Valor alvo para alerta (R$)", min_value=0.0, value=6.0)
+cooldown = st.number_input("Cooldown alerta (segundos)", min_value=0, value=3600)
+enviar_email = st.checkbox("Enviar alerta por e-mail", value=True)
+email_to = st.text_input("E-mail destino", value=DEFAULT_EMAIL_TO or "")
+enviar_whatsapp = st.checkbox("Enviar alerta por WhatsApp", value=True)
+whatsapp_to = st.text_input("WhatsApp destino", value=DEFAULT_WHATSAPP_TO or "whatsapp:+55XXXXXXXXXXX")
+
+# 🔔 BOTÃO DE TESTE COMPLETO
+if st.button("🚨 Testar Alerta (visual + som + envio)"):
+    alerta_teste = f"🚨 [TESTE] Alerta de sistema ativo!\nMoeda: {moeda}\nHorário: {datetime.now():%d/%m %H:%M:%S}"
+    st.markdown(
+        """
+        <style>
+        .alerta-pisca {
+            animation: piscar 1s infinite;
+            font-size:22px;
+            color:red;
+            font-weight:bold;
+        }
+        @keyframes piscar {
+            0% {opacity: 1;}
+            50% {opacity: 0.2;}
+            100% {opacity: 1;}
+        }
+        </style>
+        <div class="alerta-pisca">🚨 ALERTA DE TESTE ATIVADO! 🚨</div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg")
+    canais = []
+    def enviar():
+        if enviar_email:
+            send_email_alert("🔔 Alerta de Teste", alerta_teste, email_to)
+            canais.append("E-mail")
+        if enviar_whatsapp:
+            send_whatsapp_alert(alerta_teste, whatsapp_to)
+            canais.append("WhatsApp")
+        mark_alert_sent(moeda, valor_alvo, ",".join(canais))
+    threading.Thread(target=enviar, daemon=True).start()
+    st.success(f"✅ Alerta de teste enviado com sucesso via {', '.join(canais) or 'nenhum canal configurado'}!")
+
+refresh_interval = st.slider("Atualização automática (segundos)", 10, 300, 60)
+
+# ==========================
+# 🚀 FUNÇÃO PRINCIPAL
+# ==========================
+def atualizar_dashboard():
+    df = pegar_dados_cache(moeda, dias)
+    if df.empty:
+        st.error(f"Nenhum dado disponível para {moeda}.")
+        return df, pd.DataFrame()
+
+    st.subheader(f"📊 Estatísticas — {moeda}/BRL")
+    st.metric("Média", f"R$ {df['bid'].mean():.2f}")
+    st.metric("Máximo", f"R$ {df['bid'].max():.2f}")
+    st.metric("Mínimo", f"R$ {df['bid'].min():.2f}")
+
+    fig_hist = px.line(df, x="timestamp", y="bid", title=f"{moeda}/BRL - Últimos {dias} dias", markers=True)
+    st.plotly_chart(fig_hist, use_container_width=True, key=f"hist_{moeda}")
+
+    df_pred = gerar_previsao_prophet(df, dias_previsao)
+
+    if not df_pred.empty:
+        st.subheader("🔮 Previsão de Cotação (IA Prophet)")
+        for i in range(len(df_pred)):
+            st.write(f"{df_pred.iloc[i]['timestamp'].strftime('%Y-%m-%d')}: R$ {df_pred.iloc[i]['bid']:.2f}")
+
+    fig_comb = px.line(df, x="timestamp", y="bid", title=f"{moeda}/BRL — Histórico + Previsão")
+    if not df_pred.empty:
+        fig_comb.add_scatter(x=df_pred["timestamp"], y=df_pred["bid"], mode="lines+markers", name="Previsão IA")
+    st.plotly_chart(fig_comb, use_container_width=True, key=f"comb_{moeda}")
+
+    ult_valor = df["bid"].iloc[-1]
+    if ult_valor >= valor_alvo and can_send_alert(moeda, valor_alvo, cooldown):
+        alerta = f"🚨 ALERTA REAL: {moeda}/BRL atingiu R$ {ult_valor:.2f} (≥ {valor_alvo:.2f})"
+        st.audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg")
+        st.markdown(
+            """
+            <style>
+            .alerta-pisca {
+                animation: piscar 1s infinite;
+                font-size:22px;
+                color:red;
+                font-weight:bold;
+            }
+            @keyframes piscar {
+                0% {opacity: 1;}
+                50% {opacity: 0.2;}
+                100% {opacity: 1;}
+            }
+            </style>
+            <div class="alerta-pisca">🚨 ALERTA ATIVO! VALOR ATINGIDO!</div>
+            """,
+            unsafe_allow_html=True,
+        )
+        def enviar():
+            canais = []
+            if enviar_email:
+                send_email_alert(f"Alerta {moeda}", alerta, email_to)
+                canais.append("E-mail")
+            if enviar_whatsapp:
+                send_whatsapp_alert(alerta, whatsapp_to)
+                canais.append("WhatsApp")
+            mark_alert_sent(moeda, valor_alvo, ",".join(canais))
+        threading.Thread(target=enviar, daemon=True).start()
+
+    if alert_log:
+        st.subheader("📜 Histórico de Alertas")
+        log_df = pd.DataFrame(alert_log, columns=["Data/Hora", "Moeda", "Valor Alvo", "Canais"])
+        st.dataframe(log_df)
+    else:
+        st.info("Nenhum alerta enviado ainda.")
+
+    st.download_button("📘 Baixar Excel", gerar_excel_cache(df, df_pred),
+                       file_name=f"{moeda}_cotacoes.xlsx",
+                       mime="application/vnd.openxmlformats-officedocument-spreadsheetml.sheet")
+    st.download_button("📄 Baixar PDF", gerar_pdf_cache(df, df_pred, moeda),
+                       file_name=f"{moeda}_cotacoes.pdf", mime="application/pdf")
+
+    return df, df_pred
+
+# ==========================
+# 🔁 ATUALIZAÇÃO AUTOMÁTICA
+# ==========================
+st_autorefresh(interval=refresh_interval * 1000, key="autorefresh")
+df, df_pred = atualizar_dashboard()
