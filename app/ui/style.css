@@ -1,0 +1,1236 @@
+/* ===================================================== */
+/* 🎨 style.css — Tema CyberNeon KLStarTech EVOLUTION   */
+/* by KLStarTech (Kauã Lima) + DeepSeek AI              */
+/* Versão: 3.0 - Com Variáveis Dinâmicas e Efeitos 3D   */
+/* ===================================================== */
+
+:root {
+  /* 🌈 Cores principais - Sistema de Tema Dinâmico */
+  --bg-primary: #0b0c10;
+  --bg-secondary: #1f2833;
+  --bg-tertiary: #0d1117;
+  --bg-quaternary: #151a21;
+  
+  /* 🎯 Cores de destaque - Gradiente tecnológico avançado */
+  --accent-primary: #66fcf1;
+  --accent-secondary: #45a29e;
+  --accent-tertiary: #00ffea;
+  --accent-glow: rgba(102, 252, 241, 0.4);
+  --accent-glow-strong: rgba(102, 252, 241, 0.6);
+  
+  /* 🌟 Novas cores de paleta expandida */
+  --neon-purple: #b967ff;
+  --neon-pink: #ff2a6d;
+  --neon-blue: #05d9e8;
+  --neon-green: #00ff9f;
+  --neon-yellow: #fff000;
+  
+  /* 📝 Sistema de texto avançado */
+  --text-primary: #ffffff;
+  --text-secondary: #c5c6c7;
+  --text-muted: #8b949e;
+  --text-accent: #66fcf1;
+  
+  /* 🚦 Sistema de estado expandido */
+  --success: #00d26a;
+  --success-glow: rgba(0, 210, 106, 0.4);
+  --warning: #ffb224;
+  --warning-glow: rgba(255, 178, 36, 0.4);
+  --error: #ff6b6b;
+  --error-glow: rgba(255, 107, 107, 0.4);
+  --info: #66fcf1;
+  --info-glow: rgba(102, 252, 241, 0.4);
+  
+  /* 🎭 Efeitos especiais avançados */
+  --glass-effect: rgba(255, 255, 255, 0.03);
+  --glass-effect-strong: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(102, 252, 241, 0.08);
+  --glass-border-strong: rgba(102, 252, 241, 0.15);
+  
+  /* 🔥 Sistema de sombras e glow */
+  --neon-glow: 0 0 20px var(--accent-glow);
+  --neon-glow-strong: 0 0 30px var(--accent-glow-strong);
+  --neon-glow-intense: 0 0 50px var(--accent-glow-strong);
+  --deep-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --deep-shadow-strong: 0 12px 48px rgba(0, 0, 0, 0.6);
+  
+  /* ⚡ Sistema de transições avançado */
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  
+  /* 🎮 Efeitos de blur */
+  --blur-weak: blur(8px);
+  --blur-normal: blur(16px);
+  --blur-strong: blur(24px);
+  
+  /* 📐 Bordas avançadas */
+  --border-radius-sm: 8px;
+  --border-radius: 12px;
+  --border-radius-lg: 16px;
+  --border-radius-xl: 20px;
+  --border-radius-2xl: 24px;
+}
+
+/* ===================================================== */
+/* 🎯 SISTEMA DE TEMA DINÂMICO */
+/* ===================================================== */
+
+[data-theme="cyber"] {
+  --accent-primary: #ff2a6d;
+  --accent-secondary: #b967ff;
+  --accent-glow: rgba(255, 42, 109, 0.4);
+}
+
+[data-theme="matrix"] {
+  --accent-primary: #00ff9f;
+  --accent-secondary: #00ff41;
+  --accent-glow: rgba(0, 255, 159, 0.4);
+}
+
+[data-theme="ocean"] {
+  --accent-primary: #05d9e8;
+  --accent-secondary: #0077ff;
+  --accent-glow: rgba(5, 217, 232, 0.4);
+}
+
+/* ===================================================== */
+/* 🌐 FONTES E RESET AVANÇADO */
+/* ===================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+.stApp,
+[data-testid="stAppViewContainer"],
+[data-testid="stSidebar"] {
+  background: 
+    radial-gradient(
+      ellipse at top left,
+      var(--bg-primary) 0%,
+      var(--bg-secondary) 50%,
+      var(--bg-tertiary) 100%
+    ),
+    linear-gradient(
+      135deg,
+      transparent 0%,
+      rgba(102, 252, 241, 0.03) 50%,
+      transparent 100%
+    ) !important;
+  color: var(--text-secondary) !important;
+  font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif !important;
+  line-height: 1.6;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Efeito de partículas no background */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle at 20% 30%, rgba(102, 252, 241, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(102, 252, 241, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(102, 252, 241, 0.04) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ===================================================== */
+/* 🖼️ LAYOUT PRINCIPAL EVOLUÍDO */
+/* ===================================================== */
+
+/* Header principal com efeito de vidro avançado */
+header[data-testid="stHeader"] {
+  border-bottom: 1px solid var(--glass-border-strong) !important;
+  -webkit-backdrop-filter: var(--blur-strong);
+  backdrop-filter: var(--blur-strong);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  ) !important;
+  box-shadow: 
+    0 4px 20px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Sidebar ultra avançada */
+section[data-testid="stSidebar"] {
+  background: linear-gradient(
+    180deg,
+    var(--bg-secondary) 0%,
+    rgba(31, 40, 51, 0.98) 100%
+  ) !important;
+  border-right: 1px solid var(--glass-border-strong);
+  box-shadow: 
+    var(--neon-glow),
+    4px 0 20px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+section[data-testid="stSidebar"]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--accent-primary),
+    transparent
+  );
+  animation: sidebarGlow 3s ease-in-out infinite;
+}
+
+@keyframes sidebarGlow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+section[data-testid="stSidebar"] > div {
+  background: transparent !important;
+}
+
+/* ===================================================== */
+/* 🎴 SISTEMA DE CARDS HOLOGRÁFICOS */
+/* ===================================================== */
+
+.estelar-card,
+.cyber-card,
+[data-testid="stVerticalBlock"] > div:not([style*="background-color"]) {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.02) 0%,
+    rgba(0, 0, 0, 0.1) 100%
+  ) !important;
+  border-radius: var(--border-radius-2xl) !important;
+  padding: 28px !important;
+  box-shadow: 
+    var(--deep-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 1px var(--glass-border) !important;
+  border: 1px solid var(--glass-border) !important;
+  -webkit-backdrop-filter: var(--blur-strong);
+  backdrop-filter: var(--blur-strong);
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+.estelar-card::before,
+.cyber-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(102, 252, 241, 0.1),
+    transparent
+  );
+  transition: left var(--transition-slow);
+  z-index: 1;
+}
+
+.estelar-card::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    from 0deg,
+    transparent,
+    rgba(102, 252, 241, 0.1),
+    rgba(102, 252, 241, 0.05),
+    transparent
+  );
+  animation: rotate 10s linear infinite;
+  z-index: 0;
+}
+
+@keyframes rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.estelar-card:hover::before,
+.cyber-card:hover::before {
+  left: 100%;
+}
+
+.estelar-card:hover,
+.cyber-card:hover {
+  transform: 
+    translateY(-4px) 
+    rotateX(2deg) 
+    rotateY(2deg);
+  box-shadow: 
+    var(--deep-shadow-strong),
+    var(--neon-glow-strong),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  border-color: var(--accent-primary) !important;
+}
+
+/* Cards especiais */
+.card-premium {
+  background: linear-gradient(
+    135deg,
+    rgba(102, 252, 241, 0.05) 0%,
+    rgba(69, 162, 158, 0.1) 100%
+  ) !important;
+  border: 1px solid var(--accent-primary) !important;
+}
+
+.card-danger {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 107, 107, 0.05) 0%,
+    rgba(255, 107, 107, 0.1) 100%
+  ) !important;
+  border: 1px solid var(--error) !important;
+}
+
+/* ===================================================== */
+/* 🤖 AVATAR ESTELAR - SISTEMA HOLOGRÁFICO */
+/* ===================================================== */
+
+.estelar-avatar-container {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto 30px auto;
+  border-radius: var(--border-radius-2xl);
+  overflow: hidden;
+  position: relative;
+  box-shadow: 
+    var(--deep-shadow-strong),
+    0 0 80px rgba(102, 252, 241, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 2px solid transparent;
+  background: 
+    linear-gradient(135deg, var(--bg-secondary), var(--bg-primary)) padding-box,
+    linear-gradient(135deg, var(--accent-primary), var(--accent-secondary), transparent) border-box;
+  transform-style: preserve-3d;
+  transition: all var(--transition-normal);
+}
+
+.estelar-avatar-container::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(
+    45deg,
+    var(--accent-primary),
+    var(--accent-secondary),
+    var(--neon-purple),
+    var(--accent-primary)
+  );
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+}
+
+.estelar-avatar-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(102, 252, 241, 0.1) 0%,
+    transparent 30%,
+    transparent 70%,
+    rgba(102, 252, 241, 0.1) 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+.estelar-avatar-container:hover::before {
+  opacity: 1;
+  animation: borderRotate 3s linear infinite;
+}
+
+@keyframes borderRotate {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+.estelar-avatar-container img,
+.estelar-avatar-container video {
+  width: 100%;
+  height: auto;
+  display: block;
+  transition: all var(--transition-slow);
+  position: relative;
+  z-index: 1;
+}
+
+.estelar-avatar-container:hover img,
+.estelar-avatar-container:hover video {
+  transform: scale(1.03);
+  filter: brightness(1.1) contrast(1.05);
+}
+
+/* ===================================================== */
+/* 🏷️ SISTEMA DE BADGES HOLOGRÁFICOS */
+/* ===================================================== */
+
+.estelar-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--border-radius-lg);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 252, 241, 0.15) 0%,
+    rgba(69, 162, 158, 0.1) 100%
+  );
+  border: 1px solid rgba(102, 252, 241, 0.2);
+  -webkit-backdrop-filter: var(--blur-normal);
+  backdrop-filter: var(--blur-normal);
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--accent-primary);
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.estelar-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left var(--transition-slow);
+}
+
+.estelar-badge:hover::before {
+  left: 100%;
+}
+
+.estelar-badge:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(102, 252, 241, 0.2) 0%,
+    rgba(69, 162, 158, 0.15) 100%
+  );
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 20px rgba(102, 252, 241, 0.3),
+    var(--neon-glow);
+}
+
+/* Sistema de badges com cores dinâmicas */
+.badge-success { 
+  background: linear-gradient(135deg, var(--success-glow), rgba(0, 210, 106, 0.1)); 
+  color: var(--success); 
+  border-color: rgba(0, 210, 106, 0.3); 
+}
+
+.badge-warning { 
+  background: linear-gradient(135deg, var(--warning-glow), rgba(255, 178, 36, 0.1)); 
+  color: var(--warning); 
+  border-color: rgba(255, 178, 36, 0.3); 
+}
+
+.badge-error { 
+  background: linear-gradient(135deg, var(--error-glow), rgba(255, 107, 107, 0.1)); 
+  color: var(--error); 
+  border-color: rgba(255, 107, 107, 0.3); 
+}
+
+.badge-info { 
+  background: linear-gradient(135deg, var(--info-glow), rgba(102, 252, 241, 0.1)); 
+  color: var(--info); 
+  border-color: rgba(102, 252, 241, 0.3); 
+}
+
+.badge-premium {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.1));
+  color: var(--neon-yellow);
+  border-color: rgba(255, 215, 0, 0.3);
+  animation: pulseGold 2s infinite;
+}
+
+@keyframes pulseGold {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
+}
+
+/* ===================================================== */
+/* 💬 SISTEMA DE CHAT HOLOGRÁFICO */
+/* ===================================================== */
+
+.estelar-chat-container {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(0, 0, 0, 0.15) 100%
+  );
+  border-radius: var(--border-radius-2xl);
+  border: 1px solid var(--glass-border-strong);
+  -webkit-backdrop-filter: var(--blur-strong);
+  backdrop-filter: var(--blur-strong);
+  overflow: hidden;
+  box-shadow: 
+    var(--deep-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.estelar-chat-header {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: var(--bg-primary);
+  padding: 20px 28px;
+  font-weight: 700;
+  font-size: 1.2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.estelar-chat-header::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  animation: headerScan 2s linear infinite;
+}
+
+@keyframes headerScan {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.estelar-chatbox {
+  background: transparent;
+  max-height: 500px;
+  padding: 24px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+/* Scrollbar customizada avançada */
+.estelar-chatbox::-webkit-scrollbar {
+  width: 8px;
+}
+
+.estelar-chatbox::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  margin: 4px 0;
+}
+
+.estelar-chatbox::-webkit-scrollbar-thumb {
+  background: linear-gradient(var(--accent-primary), var(--accent-secondary));
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.estelar-chatbox::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+/* Sistema de mensagens avançado */
+.chat-message {
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  border-radius: 20px;
+  max-width: 85%;
+  position: relative;
+  animation: messageSlideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  -webkit-backdrop-filter: var(--blur-normal);
+  backdrop-filter: var(--blur-normal);
+  line-height: 1.5;
+}
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.chat-message.user {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: var(--bg-primary);
+  margin-left: auto;
+  border-bottom-right-radius: 8px;
+  box-shadow: 
+    0 4px 15px rgba(102, 252, 241, 0.3),
+    var(--neon-glow);
+}
+
+.chat-message.bot {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  color: var(--text-secondary);
+  margin-right: auto;
+  border-bottom-left-radius: 8px;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.chat-message.bot::before {
+  content: '🤖';
+  position: absolute;
+  left: -35px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+  background: var(--bg-secondary);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--glass-border);
+}
+
+.chat-message.user::before {
+  content: '👤';
+  position: absolute;
+  right: -35px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+  background: var(--bg-secondary);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--glass-border);
+}
+
+/* ===================================================== */
+/* 🔔 SISTEMA DE NOTIFICAÇÕES HOLOGRÁFICO */
+/* ===================================================== */
+
+.estelar-notification-bell {
+  position: fixed;
+  top: 25px;
+  right: 25px;
+  width: 55px;
+  height: 55px;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 
+    0 10px 30px rgba(102, 252, 241, 0.4),
+    var(--neon-glow-intense);
+  cursor: pointer;
+  z-index: 1000;
+  transition: all var(--transition-bounce);
+  animation: bellPulse 3s infinite;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+@keyframes bellPulse {
+  0%, 100% { 
+    transform: scale(1) rotate(0deg);
+    box-shadow: 
+      0 10px 30px rgba(102, 252, 241, 0.4),
+      var(--neon-glow-intense);
+  }
+  25% { 
+    transform: scale(1.08) rotate(5deg);
+    box-shadow: 
+      0 15px 40px rgba(102, 252, 241, 0.6),
+      0 0 40px rgba(102, 252, 241, 0.4);
+  }
+  50% { 
+    transform: scale(1.05) rotate(-5deg);
+    box-shadow: 
+      0 12px 35px rgba(102, 252, 241, 0.5),
+      0 0 35px rgba(102, 252, 241, 0.3);
+  }
+}
+
+.estelar-notification-bell:hover {
+  transform: scale(1.15) rotate(15deg);
+  box-shadow: 
+    0 20px 50px rgba(102, 252, 241, 0.6),
+    0 0 60px rgba(102, 252, 241, 0.5);
+  animation: none;
+}
+
+.estelar-notification-bell::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: inherit;
+  animation: ripple 3s infinite;
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.8);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+/* Badge de contador de notificações */
+.notification-count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
+  color: white;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(255, 42, 109, 0.6);
+  animation: countPulse 2s infinite;
+}
+
+@keyframes countPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* ===================================================== */
+/* 🎛️ SISTEMA DE BOTÕES CYBERNÉTICOS */
+/* ===================================================== */
+
+.stButton > button {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)) !important;
+  border: none !important;
+  color: var(--bg-primary) !important;
+  font-weight: 600 !important;
+  border-radius: var(--border-radius-lg) !important;
+  padding: 12px 24px !important;
+  transition: all var(--transition-bounce) !important;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 
+    0 4px 15px rgba(102, 252, 241, 0.3),
+    var(--neon-glow) !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.stButton > button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transition: left var(--transition-slow);
+}
+
+.stButton > button:hover::before {
+  left: 100%;
+}
+
+.stButton > button:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 
+    0 8px 25px rgba(102, 252, 241, 0.5),
+    var(--neon-glow-strong) !important;
+}
+
+.stButton > button:active {
+  transform: translateY(-1px) !important;
+  box-shadow: 
+    0 2px 10px rgba(102, 252, 241, 0.4) !important;
+}
+
+/* Sistema de botões com variantes */
+.stButton > button.secondary {
+  background: transparent !important;
+  color: var(--accent-primary) !important;
+  border: 2px solid var(--accent-primary) !important;
+  box-shadow: none !important;
+}
+
+.stButton > button.secondary:hover {
+  background: rgba(102, 252, 241, 0.1) !important;
+  box-shadow: var(--neon-glow) !important;
+}
+
+.stButton > button.danger {
+  background: linear-gradient(135deg, var(--error), #ff4757) !important;
+  box-shadow: 
+    0 4px 15px rgba(255, 107, 107, 0.3),
+    0 0 20px rgba(255, 107, 107, 0.4) !important;
+}
+
+.stButton > button.success {
+  background: linear-gradient(135deg, var(--success), #00e676) !important;
+  box-shadow: 
+    0 4px 15px rgba(0, 210, 106, 0.3),
+    0 0 20px rgba(0, 210, 106, 0.4) !important;
+}
+
+/* ===================================================== */
+/* 📊 SISTEMA DE MÉTRICAS HOLOGRÁFICAS */
+/* ===================================================== */
+
+[data-testid="stMetricValue"] {
+  color: var(--accent-primary) !important;
+  font-weight: 800 !important;
+  font-size: 2.5rem !important;
+  text-shadow: 
+    0 0 20px var(--accent-glow),
+    0 0 40px var(--accent-glow-strong);
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+[data-testid="stMetricLabel"] {
+  color: var(--text-secondary) !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+  letter-spacing: 0.5px;
+}
+
+[data-testid="stMetricDelta"] {
+  font-weight: 700 !important;
+  font-size: 1rem !important;
+}
+
+/* Containers de métricas avançadas */
+[data-testid="metric-container"] {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(0, 0, 0, 0.15) 100%
+  ) !important;
+  border-radius: var(--border-radius-xl) !important;
+  padding: 24px !important;
+  border: 1px solid var(--glass-border) !important;
+  -webkit-backdrop-filter: var(--blur-normal);
+  backdrop-filter: var(--blur-normal);
+  transition: all var(--transition-normal);
+}
+
+[data-testid="metric-container"]:hover {
+  border-color: var(--accent-primary) !important;
+  box-shadow: var(--neon-glow) !important;
+  transform: translateY(-2px);
+}
+
+/* ===================================================== */
+/* 🎨 SISTEMA DE GRÁFICOS E VISUALIZAÇÕES */
+/* ===================================================== */
+
+/* Customização para gráficos Plotly */
+.js-plotly-plot .plotly .modebar {
+  background: var(--glass-effect) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--border-radius) !important;
+}
+
+.js-plotly-plot .plotly .modebar-btn {
+  color: var(--text-secondary) !important;
+}
+
+.js-plotly-plot .plotly .modebar-btn:hover {
+  background: rgba(102, 252, 241, 0.1) !important;
+  color: var(--accent-primary) !important;
+}
+
+/* ===================================================== */
+/* 📋 SISTEMA DE TABELAS CYBERNÉTICAS */
+/* ===================================================== */
+
+table {
+  border-radius: var(--border-radius-xl) !important;
+  overflow: hidden !important;
+  border: 1px solid var(--glass-border) !important;
+  -webkit-backdrop-filter: var(--blur-normal);
+  backdrop-filter: var(--blur-normal);
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+th {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)) !important;
+  color: var(--bg-primary) !important;
+  font-weight: 700 !important;
+  border: none !important;
+  padding: 16px 20px !important;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+}
+
+td {
+  background: rgba(255, 255, 255, 0.02) !important;
+  color: var(--text-secondary) !important;
+  border-bottom: 1px solid var(--glass-border) !important;
+  padding: 14px 20px !important;
+  transition: all var(--transition-fast);
+}
+
+tr:hover td {
+  background: rgba(102, 252, 241, 0.08) !important;
+  color: var(--text-primary) !important;
+  transform: translateX(4px);
+}
+
+/* ===================================================== */
+/* 🎭 SISTEMA DE ANIMAÇÕES AVANÇADAS */
+/* ===================================================== */
+
+/* Loading animation avançada */
+.estelar-loading {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(102, 252, 241, 0.3);
+  border-radius: 50%;
+  border-top-color: var(--accent-primary);
+  animation: spin 1s ease-in-out infinite;
+  position: relative;
+}
+
+.estelar-loading::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border: 3px solid transparent;
+  border-radius: 50%;
+  border-top-color: var(--accent-secondary);
+  animation: spin 1.5s ease-in-out infinite reverse;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Sistema de entrada de dados avançado */
+.stTextInput > div > div > input,
+.stSelectbox > div > div > select,
+.stNumberInput > div > div > input,
+.stTextArea > div > div > textarea {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--border-radius) !important;
+  color: var(--text-primary) !important;
+  padding: 12px 16px !important;
+  transition: all var(--transition-normal) !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.stTextInput > div > div > input:focus,
+.stSelectbox > div > div > select:focus,
+.stNumberInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus {
+  border-color: var(--accent-primary) !important;
+  box-shadow: 
+    0 0 0 3px rgba(102, 252, 241, 0.2),
+    var(--neon-glow) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  outline: none !important;
+}
+
+/* Placeholders estilizados */
+.stTextInput > div > div > input::placeholder,
+.stTextArea > div > div > textarea::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.7;
+}
+
+/* ===================================================== */
+/* 📱 SISTEMA DE RESPONSIVIDADE AVANÇADO */
+/* ===================================================== */
+
+@media (max-width: 768px) {
+  :root {
+    --border-radius-lg: 14px;
+    --border-radius-xl: 18px;
+    --border-radius-2xl: 20px;
+  }
+  
+  .estelar-avatar-container {
+    max-width: 320px;
+    border-radius: var(--border-radius-xl);
+  }
+  
+  .estelar-chat-container {
+    margin: 15px;
+    border-radius: var(--border-radius-xl);
+  }
+  
+  .chat-message {
+    max-width: 92%;
+    padding: 14px 18px;
+  }
+  
+  .estelar-notification-bell {
+    width: 48px;
+    height: 48px;
+    top: 20px;
+    right: 20px;
+  }
+  
+  [data-testid="stMetricValue"] {
+    font-size: 2rem !important;
+  }
+  
+  .estelar-card,
+  .cyber-card {
+    padding: 20px !important;
+    border-radius: var(--border-radius-xl) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .estelar-avatar-container {
+    max-width: 280px;
+  }
+  
+  .estelar-card,
+  .cyber-card {
+    padding: 16px !important;
+    border-radius: var(--border-radius-lg) !important;
+  }
+  
+  .estelar-chat-header {
+    padding: 16px 20px;
+    font-size: 1.1rem;
+  }
+  
+  .estelar-chatbox {
+    padding: 20px;
+  }
+  
+  .stButton > button {
+    padding: 10px 20px !important;
+    font-size: 0.9rem !important;
+  }
+}
+
+/* ===================================================== */
+/* 🎮 UTILITÁRIOS VISUAIS AVANÇADOS */
+/* ===================================================== */
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary), var(--neon-purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  font-weight: 700;
+}
+
+.text-gradient-premium {
+  background: linear-gradient(135deg, var(--neon-yellow), #ffd700, var(--neon-pink));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: textShine 3s ease-in-out infinite;
+}
+
+@keyframes textShine {
+  0%, 100% { filter: hue-rotate(0deg); }
+  50% { filter: hue-rotate(45deg); }
+}
+
+.glass-effect {
+  background: var(--glass-effect);
+  -webkit-backdrop-filter: var(--blur-strong);
+  backdrop-filter: var(--blur-strong);
+  border: 1px solid var(--glass-border);
+}
+
+.glass-effect-strong {
+  background: var(--glass-effect-strong);
+  -webkit-backdrop-filter: var(--blur-strong);
+  backdrop-filter: var(--blur-strong);
+  border: 1px solid var(--glass-border-strong);
+}
+
+.neon-glow {
+  box-shadow: var(--neon-glow);
+}
+
+.neon-glow-strong {
+  box-shadow: var(--neon-glow-strong);
+}
+
+.neon-glow-intense {
+  box-shadow: var(--neon-glow-intense);
+}
+
+/* Sistema de cores de status */
+.text-success { 
+  color: var(--success) !important; 
+  text-shadow: 0 0 10px var(--success-glow);
+}
+
+.text-warning { 
+  color: var(--warning) !important; 
+  text-shadow: 0 0 10px var(--warning-glow);
+}
+
+.text-error { 
+  color: var(--error) !important; 
+  text-shadow: 0 0 10px var(--error-glow);
+}
+
+.text-info { 
+  color: var(--info) !important; 
+  text-shadow: 0 0 10px var(--info-glow);
+}
+
+/* Sistema de espaçamento consistente */
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+.mb-4 { margin-bottom: 2rem; }
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mt-4 { margin-top: 2rem; }
+.p-1 { padding: 0.5rem; }
+.p-2 { padding: 1rem; }
+.p-3 { padding: 1.5rem; }
+.p-4 { padding: 2rem; }
+
+/* Sistema de flexbox utilitário */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.gap-1 { gap: 0.5rem; }
+.gap-2 { gap: 1rem; }
+.gap-3 { gap: 1.5rem; }
+
+/* ===================================================== */
+/* 🌟 EFEITOS ESPECIAIS EXCLUSIVOS */
+/* ===================================================== */
+
+/* Efeito de partículas flutuantes */
+.floating-particles {
+  position: relative;
+}
+
+.floating-particles::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle at 20% 80%, rgba(102, 252, 241, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(102, 252, 241, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(102, 252, 241, 0.06) 0%, transparent 50%);
+  animation: float 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Efeito de scanline */
+.scanlines {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanlines::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    transparent 50%,
+    rgba(0, 0, 0, 0.1) 50%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  animation: scanline 2s linear infinite;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+/* ===================================================== */
+/* 🏁 FIM DO TEMA CYBERNEON EVOLUTION */
+/* ===================================================== */
